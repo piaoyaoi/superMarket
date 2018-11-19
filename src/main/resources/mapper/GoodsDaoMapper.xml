@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="basePackage.dao.GoodsDao">
+	<resultMap type="Goods" id="goodsDetail">
+	<id property="id" column="id"/>
+	<result property="title" column="title"/>
+	<result property="price" column="price"/>
+	<result property="mainImgUrl"  column="mainImgUrl"/>
+	<result property="description" column="description"/>
+	<result property="sales" column="sales"/>
+	<collection property="goodImg" ofType="GoodsImg"  >
+		<id property="id" column="imgId"/>
+		<result property="goodsId" column="img_goodsId"/>
+		<result property="url" column="url"/>
+	</collection>
+	</resultMap>
+	<select id="getGoodsByClass"  resultType="Goods" parameterType="Goods">
+		select id,price,mainImgUrl,classId ,goodsName,sales from goods <where>
+			state = '0'
+			<if test="classId != null">
+				classId = #{classId}
+			</if>
+			<if test="title !=null">
+				title like '%#{title}%'
+			</if>
+		</where>
+				<if test="sort == null">
+				order by weight asc
+			</if>
+			<if test="sort != null">
+				order by #{sort}  #{order}
+			</if>
+	</select>
+	<select id="getGoodsDetail" parameterType="string" resultMap="goodsDetail">
+SELECT
+	g.id,
+	g.price,
+	g.mainImgUrl,
+	g.classId,
+	g.goodsName,
+	g.description,
+	g.sales,
+	img.id AS imgId,
+	img.goodsId AS img_goodsId,
+	img.url
+FROM
+	goods g,
+	goodsImg AS img
+WHERE
+	img.goodsId = g.id
+AND g.id = #{id}
+	</select>
+</mapper>
