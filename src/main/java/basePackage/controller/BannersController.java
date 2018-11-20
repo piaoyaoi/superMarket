@@ -12,11 +12,8 @@ import basePackage.utils.MessageBox;
 public class BannersController {
 	@Autowired
 	private BannersService bs;
-	@Autowired
-	private MessageBox msg;
 	@RequestMapping("getBanners")
 	private MessageBox getBanners() {
-		msg.setData(bs.getBanners());
-		return msg;
+		return MessageBox.noMessageAndSuccess(bs.getBanners());
 	}
 }

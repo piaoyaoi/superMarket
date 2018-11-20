@@ -9,11 +9,18 @@ spring:
   redis:
     port: 6379
     password: root
+  jpa:
+    show-sql: true
 wx:
   appId: wx8c17b99b642d478e
   appSecret: 47b9a631bfa10b1e24fa0e0a07693a1e
   grantType: authorization_code
+  MCH_ID: 'aewaeaew'
 mybatis:
   mapper-locations:
   - classpath:mapper/*.xml
   type-aliases-package: basePackage.entity
+logging:
+  level:
+    basePackage.dao : debug
+ 

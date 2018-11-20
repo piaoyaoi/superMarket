@@ -42,6 +42,20 @@ public class OrdersDetail {
 	 * 实际到达日期
 	 */
 	private Date realyArriveDate;
+	
+	/**
+	 * 备注
+	 * @return
+	 */
+	private String remark;
+	
+	public String getRemark() {
+		return remark;
+	}
+
+	public void setRemark(String remark) {
+		this.remark = remark;
+	}
 
 	public String getOrderId() {
 		return orderId;

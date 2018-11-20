@@ -11,11 +11,10 @@ import basePackage.utils.MessageBox;
 public class GoodsClassController {
 	@Autowired
 	private GoodsClassService gcs;
-	@Autowired
-	private MessageBox msgBox;
 	@RequestMapping("getGoodsClass")
 	public MessageBox getGoodsClass() {
-		msgBox.setData(gcs.getGoodsClass());
-		return msgBox;
+//		msgBox.setData(gcs.getGoodsClass());
+//		return msgBox;
+		return MessageBox.noMessageAndSuccess(gcs.getGoodsClass());
 	}
 }

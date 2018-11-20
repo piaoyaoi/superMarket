@@ -2,6 +2,7 @@ package basePackage.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -14,16 +15,12 @@ import basePackage.utils.MessageBox;
 public class GoodsController {
 	@Autowired
 	private GoodsService gs;
-	@Autowired
-	private MessageBox msgBox;
-	@RequestMapping("getGoods")
+	@PostMapping("getGoods")
 	private MessageBox getGoods(Goods goods) {
-		msgBox.setData(gs.getGoodsByclass(goods));
-		return msgBox;
+		return MessageBox.noMessageAndSuccess(gs.getGoodsByclass(goods));
 	}
 	@RequestMapping("getGoodeDetail/{id}")
 	private MessageBox getGoodsDetail(@PathVariable("id")String id) {
-		msgBox.setData(gs.getGoodsDetail(id));
-		return msgBox;
+		return MessageBox.noMessageAndSuccess(gs.getGoodsDetail(id));
 	}
 }

@@ -10,6 +10,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	<result property="mainImgUrl"  column="mainImgUrl"/>
 	<result property="description" column="description"/>
 	<result property="sales" column="sales"/>
+	<result property="goodsName" column="goodsName"/>
 	<collection property="goodImg" ofType="GoodsImg"  >
 		<id property="id" column="imgId"/>
 		<result property="goodsId" column="img_goodsId"/>
@@ -19,15 +20,16 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	<select id="getGoodsByClass"  resultType="Goods" parameterType="Goods">
 		select id,price,mainImgUrl,classId ,goodsName,sales from goods <where>
 			state = '0'
-			<if test="classId != null">
-				classId = #{classId}
+			<if test="classId  !=  null">
+				and 	classId = #{classId}
 			</if>
-			<if test="title !=null">
-				title like '%#{title}%'
+			<if test="goodsName  != '' ">
+			and 	goodsName like '%${goodsName}%'
 			</if>
 		</where>
-				<if test="sort == null">
-				order by weight asc
+
+		<if test="sort == null">
+				order by weight  asc
 			</if>
 			<if test="sort != null">
 				order by #{sort}  #{order}

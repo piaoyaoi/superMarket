@@ -13,11 +13,8 @@ public class NoticeController {
 	
 	@Autowired
 	private NoticeService ns;
-	@Autowired
-	private MessageBox msgBox;
 	@RequestMapping("getNotice")
 	private MessageBox getNotice() {
-		msgBox.setData(ns.getNotice());
-		return msgBox;
+		return MessageBox.noMessageAndFail(ns.getNotice());
 	}
 }
