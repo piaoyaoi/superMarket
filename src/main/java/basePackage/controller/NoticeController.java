@@ -15,6 +15,6 @@ public class NoticeController {
 	private NoticeService ns;
 	@RequestMapping("getNotice")
 	private MessageBox getNotice() {
-		return MessageBox.noMessageAndFail(ns.getNotice());
+		return MessageBox.success(ns.getNotice());
 	}
 }

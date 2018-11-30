@@ -14,6 +14,6 @@ public class BannersController {
 	private BannersService bs;
 	@RequestMapping("getBanners")
 	private MessageBox getBanners() {
-		return MessageBox.noMessageAndSuccess(bs.getBanners());
+		return MessageBox.success(bs.getBanners());
 	}
 }

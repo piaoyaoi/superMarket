@@ -32,8 +32,20 @@ public class Orders extends BaseEntity{
 	 */
 	private List<OrdersDetail> detailList;
 	
+	/**
+	 * 订单备注
+	 * @return
+	 */
+	private String remark;
 	
-	
+	public String getRemark() {
+		return remark;
+	}
+
+	public void setRemark(String remark) {
+		this.remark = remark;
+	}
+
 	public List<OrdersDetail> getDetailList() {
 		return detailList;
 	}

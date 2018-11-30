@@ -17,10 +17,10 @@ public class GoodsController {
 	private GoodsService gs;
 	@PostMapping("getGoods")
 	private MessageBox getGoods(Goods goods) {
-		return MessageBox.noMessageAndSuccess(gs.getGoodsByclass(goods));
+		return MessageBox.success(gs.getGoodsByclass(goods));
 	}
 	@RequestMapping("getGoodeDetail/{id}")
 	private MessageBox getGoodsDetail(@PathVariable("id")String id) {
-		return MessageBox.noMessageAndSuccess(gs.getGoodsDetail(id));
+		return MessageBox.success(gs.getGoodsDetail(id));
 	}
 }

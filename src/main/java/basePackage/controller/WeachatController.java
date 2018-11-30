@@ -1,12 +1,8 @@
 package basePackage.controller;
 
-import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Map;
-import java.util.Random;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.UUID;
 
 import javax.servlet.ServletInputStream;
@@ -27,9 +23,14 @@ import com.alibaba.fastjson.JSONObject;
 import basePackage.entity.Goods;
 import basePackage.entity.Weachat;
 import basePackage.utils.HttpUtil;
+import basePackage.utils.IpUtils;
 import basePackage.utils.MessageBox;
-import basePackage.utils.PayCommonUtil;
-import basePackage.utils.XMLUtil;
+import cn.javaer.wechat.pay.model.UnifiedOrderRequest;
+import cn.javaer.wechat.pay.model.UnifiedOrderResponse;
+import cn.javaer.wechat.pay.model.base.TradeType;
+import cn.javaer.wechat.pay.util.CodecUtils;
+import cn.javaer.wechat.pay.util.ObjectUtils;
+import cn.javaer.wechat.pay.util.SignUtils;
 
 /**
  * 微信controller
@@ -69,11 +70,11 @@ public class WeachatController {
 			msg =  "登录过于频繁，请稍后再试";
 		}
 		if(msg != null) {
-			return MessageBox.HasMessageAndFail(msg, null);
+			return MessageBox.fail(msg);
 		}
 		String  key = UUID.randomUUID().toString();
 		redisTemplate.opsForValue().set(key, weachat.getSession_key());
-		return MessageBox.noMessageAndSuccess(key);
+		return MessageBox.success(key);
 	}
 	/**
 	 * 微信预支付
@@ -81,61 +82,51 @@ public class WeachatController {
 	 * @return
 	 */
 	@RequestMapping("prePayment")
-	private MessageBox payment(String str) {
-		JSONObject obj = JSON.parseObject(str);
-	String openid=	redisTemplate.opsForValue().get(obj.get("token"));
-	Goods goods=JSON.parseObject(str, Goods.class);
-	if(openid == null) { //登录失效
-		return MessageBox.HasMessageAndFail("登录失效请重新登录", null);
+	private MessageBox payment(String str,HttpServletRequest request) {
+			JSONObject obj = JSON.parseObject(str);
+		String openid=	redisTemplate.opsForValue().get(obj.get("token"));
+		Goods goods=JSON.parseObject(str, Goods.class);
+		if(openid == null) { //登录失效
+			return MessageBox.fail("登录失效请重新登录");
+		}
+		UnifiedOrderRequest params =new UnifiedOrderRequest();
+		params.setMchId(MCH_ID);
+		params.setAppId(appId);
+		params.setNonceStr(ObjectUtils.uuid32());
+		params.setBody("腾讯充值中心-QQ会员充值");
+		params.setDetail("充值详情");
+		params.setOutTradeNo(ObjectUtils.uuid32()); //商户订单号
+		Double price = goods.getPrice()*100;
+		if(price.toString().indexOf(".")!=-1) {
+			String totalPrice = price.toString().split("\\.")[0];
+			params.setTotalFee(Integer.parseInt(totalPrice));  //总价格
+		}else {
+			params.setTotalFee(Integer.parseInt(price.toString()));  //总价格
+		}
+		try {
+			params.setSpbillCreateIp(IpUtils.getIpAddress(request));//终端ip
+		} catch (IOException e) {
+			e.printStackTrace();
+		}  
+		params.setProductId(goods.getId());
+		params.setOpenId(openid);
+		params.setTradeType(TradeType.JSAPI); //交易类型
+		//签名，最后一位是32为商户密钥
+		String sign = SignUtils.generateSign(params, ObjectUtils.uuid32());
+		params.setSign(sign);  //签名
+	/**
+	 * 异步接收微信支付结果通知的回调地址，通知url必须为外网可访问的url，不能携带参数。 // TODO 
+	 */
+		params.setNotifyUrl("http://localhost:8080/buy");
+		String reqXml = CodecUtils.marshal(params);
+		String result = HttpUtil.postData("https://api.mch.weixin.qq.com/pay/unifiedorder", reqXml);
+		System.out.println(result);
+		UnifiedOrderResponse unifiedOrderResponse = CodecUtils.unmarshal(reqXml, UnifiedOrderResponse.class);
+		System.out.println(unifiedOrderResponse);
+//		XMLUtils.getAttributeValue(, name);
+		return MessageBox.success(null);
 	}
-		String time = System.currentTimeMillis()+"";
-		//订单编号（自定义 这里以时间戳+随机数）
-				Random random = new Random();
-				String did = time+random.nextInt(1000);
-				SortedMap<Object, Object> packageParams = new TreeMap<Object, Object>();
-				packageParams.put("appid", appId);//微信小程序ID
-				packageParams.put("mch_id", MCH_ID);//商户ID
-				packageParams.put("nonce_str", time);//随机字符串（32位以内） 这里使用时间戳
-				packageParams.put("body", "情趣商城");//支付主体名称 自定义
-				packageParams.put("out_trade_no", did+"");//编号 自定义以时间戳+随机数+商品ID
-				packageParams.put("total_fee", goods.getPrice());//价格 自定义
-				//packageParams.put("spbill_create_ip", remoteAddr);
-				packageParams.put("notify_url", "http://localhost/order/buy.action");//支付返回地址要外网访问的到， localhost不行，调用下面buy方法。（订单存入数据库）
-				packageParams.put("trade_type", "JSAPI");//这个api有，固定的
-//				packageParams.put("openid", openid);//用户的openid 可以要 可以不要
-				String sign = PayCommonUtil.createSign("UTF-8", packageParams, "14257615475846987412365874562136");//最后这个是自己在微信商户设置的32位密钥
-				packageParams.put("sign", sign);
-				//转成XML
-				String requestXML = PayCommonUtil.getRequestXml(packageParams);
-				//得到含有prepay_id的XML
-				String resXml = HttpUtil.postData("https://api.mch.weixin.qq.com/pay/unifiedorder", requestXML);
-				//解析XML存入Map
-				Map map = null;
-				try {
-					map = XMLUtil.doXMLParse(resXml);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-				if(map.get("return_code").equals("FAIL")) {
-					return MessageBox.HasMessageAndFail(map.get("return_msg").toString(), null);
-				}
-				// String return_code = (String) map.get("return_code");
-				//得到prepay_id
-				String prepay_id = (String) map.get("prepay_id");
-				SortedMap<Object, Object> packageP = new TreeMap<Object, Object>();
-				packageP.put("appId", "微信小程序ID");//！！！注意，这里是appId,上面是appid
-				packageP.put("nonceStr", time);//时间戳
-				packageP.put("package", "prepay_id=" + prepay_id);//必须把package写成 "prepay_id="+prepay_id这种形式
-				packageP.put("signType", "MD5");//paySign加密
-				packageP.put("timeStamp", (System.currentTimeMillis() / 1000) + "");
-				//得到paySign
-				String paySign = PayCommonUtil.createSign("UTF-8", packageP, "32位秘钥");
-				packageP.put("paySign", paySign);
-				//将packageP数据返回给小程序
-
-				String json = JSON.toJSONString(packageP);
-				return MessageBox.noMessageAndSuccess(json);
-	}
+	
 	@RequestMapping(value="buy")
 	@ResponseBody
 	public void Buy(HttpServletRequest request,HttpServletResponse response) throws Exception{
@@ -147,44 +138,44 @@ public class WeachatController {
 			sb.append(line);  
 		}  
 		br.close();  
-		//sb为微信返回的xml  
+//		//sb为微信返回的xml  
 		String notityXml = sb.toString();  
 		String resXml = "";  
-		Map map = XMLUtil.doXMLParse(notityXml);
-		String returnCode = (String) map.get("return_code");  
- 
-		if("SUCCESS".equals(returnCode)){  
-			String out_trade_no=(String) map.get("out_trade_no");
-			String timestamp=(String) map.get("nonce_str");
-			String goodsid=out_trade_no.substring(out_trade_no.length()-3, out_trade_no.length());
-			String openid=(String) map.get("openid");
-			/*
-			 * 
-			 * 
-			 * 
-			 * 
-			 * 
-			 * 自己写存入数据库的逻辑
-			 * 
-			 * 
-			 * 
-			 * 
-			 * 
-			 * 
-			 * 
-			 * */
-			resXml = "<xml>" + "<return_code><![CDATA[SUCCESS]]></return_code>"  
-					+ "<return_msg><![CDATA[OK]]></return_msg>" + "</xml> ";  
-		}else {
-			resXml = "<xml>" + "<return_code><![CDATA[FAIL]]></return_code>"  
-					+ "<return_msg><![CDATA[报文为空]]></return_msg>" + "</xml> ";  
-		}
-		BufferedOutputStream out = new BufferedOutputStream(  
-				response.getOutputStream());  
-		out.write(resXml.getBytes());  
-		out.flush();  
-		out.close();  
- 
+//		Map map = XMLUtil.doXMLParse(notityXml);
+//		String returnCode = (String) map.get("return_code");  
+// 
+//		if("SUCCESS".equals(returnCode)){  
+//			String out_trade_no=(String) map.get("out_trade_no");
+//			String timestamp=(String) map.get("nonce_str");
+//			String goodsid=out_trade_no.substring(out_trade_no.length()-3, out_trade_no.length());
+//			String openid=(String) map.get("openid");
+//			/*
+//			 * 
+//			 * 
+//			 * 
+//			 * 
+//			 * 
+//			 * TODO 存入数据库的逻辑
+//			 * 
+//			 * 
+//			 * 
+//			 * 
+//			 * 
+//			 * 
+//			 * 
+//			 * */
+//			resXml = "<xml>" + "<return_code><![CDATA[SUCCESS]]></return_code>"  
+//					+ "<return_msg><![CDATA[OK]]></return_msg>" + "</xml> ";  
+//		}else {
+//			resXml = "<xml>" + "<return_code><![CDATA[FAIL]]></return_code>"  
+//					+ "<return_msg><![CDATA[报文为空]]></return_msg>" + "</xml> ";  
+//		}
+//		BufferedOutputStream out = new BufferedOutputStream(  
+//				response.getOutputStream());  
+//		out.write(resXml.getBytes());  
+//		out.flush();  
+//		out.close();  
+// 
 	}
 
 	public String getAppId() {

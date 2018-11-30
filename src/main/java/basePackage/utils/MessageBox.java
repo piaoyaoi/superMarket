@@ -6,22 +6,48 @@ public class MessageBox {
 	private boolean success = true;
 	private Object data;
 	
-	public static MessageBox noMessageAndSuccess(Object data) {
+	public static MessageBox success(Object data) {
 		MessageBox msBox=new MessageBox();
 		msBox.setData(data);
 		return msBox;
 	}
-	public static MessageBox noMessageAndFail(Object data) {
+	
+	public static MessageBox success(Object data,String ms) {
+		MessageBox msBox=new MessageBox();
+		msBox.setData(data);
+		msBox.setMs(ms);
+		return msBox;
+	}
+	
+	public static MessageBox success(String ms,Object data) {
+		MessageBox msBox=new MessageBox();
+		msBox.setData(data);
+		msBox.setMs(ms);
+		return msBox;
+	}
+	
+
+
+	public static MessageBox fail(Object data) {
 		MessageBox msBox=new MessageBox();
 		msBox.setData(data);
 		msBox.setSuccess(false);
 		return msBox;
 	}
-	public static MessageBox HasMessageAndFail(String msg,Object data) {
+	
+	public static MessageBox fail(Object data,String ms) {
 		MessageBox msBox=new MessageBox();
 		msBox.setData(data);
+		msBox.setMs(ms);
 		msBox.setSuccess(false);
-		msBox.setMs(msg);
+		return msBox;
+	}
+	
+	public static MessageBox fail(String ms,Object data) {
+		MessageBox msBox=new MessageBox();
+		msBox.setData(data);
+		msBox.setMs(ms);
+		msBox.setSuccess(false);
 		return msBox;
 	}
 	

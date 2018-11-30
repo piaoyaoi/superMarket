@@ -15,6 +15,6 @@ public class GoodsClassController {
 	public MessageBox getGoodsClass() {
 //		msgBox.setData(gcs.getGoodsClass());
 //		return msgBox;
-		return MessageBox.noMessageAndSuccess(gcs.getGoodsClass());
+		return MessageBox.success(gcs.getGoodsClass());
 	}
 }
