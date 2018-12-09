@@ -1,5 +1,6 @@
 package basePackage.entity;
 
+import java.util.Date;
 import java.util.List;
 
 import basePackage.BaseEntity;
@@ -33,11 +34,39 @@ public class Orders extends BaseEntity{
 	private List<OrdersDetail> detailList;
 	
 	/**
+	 * 预计到达日期
+	 */
+	private Date mayArriveDate;
+	
+	/**
+	 * 实际到达日期
+	 */
+	private Date realyArriveDate;
+	/**
 	 * 订单备注
 	 * @return
 	 */
 	private String remark;
 	
+	/**
+	 * 发货日期
+	 */
+	private Date deliverDate;
+	
+	/**
+	 * openid 唯一标识买家
+	 * @return
+	 */
+	private String openid;
+	
+	public Date getDeliverDate() {
+		return deliverDate;
+	}
+
+	public void setDeliverDate(Date deliverDate) {
+		this.deliverDate = deliverDate;
+	}
+
 	public String getRemark() {
 		return remark;
 	}
@@ -68,6 +97,29 @@ public class Orders extends BaseEntity{
 
 	public void setState(Integer state) {
 		this.state = state;
+	}
+	public Date getMayArriveDate() {
+		return mayArriveDate;
+	}
+
+	public void setMayArriveDate(Date mayArriveDate) {
+		this.mayArriveDate = mayArriveDate;
+	}
+
+	public Date getRealyArriveDate() {
+		return realyArriveDate;
+	}
+
+	public void setRealyArriveDate(Date realyArriveDate) {
+		this.realyArriveDate = realyArriveDate;
+	}
+
+	public String getOpenid() {
+		return openid;
+	}
+
+	public void setOpenid(String openid) {
+		this.openid = openid;
 	}
 	
 	

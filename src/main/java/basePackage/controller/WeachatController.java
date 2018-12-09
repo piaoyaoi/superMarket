@@ -3,7 +3,11 @@ package basePackage.controller;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 import javax.servlet.ServletInputStream;
 import javax.servlet.http.HttpServletRequest;
@@ -20,17 +24,15 @@ import org.springframework.web.bind.annotation.RestController;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
-import basePackage.entity.Goods;
+import basePackage.entity.Orders;
 import basePackage.entity.Weachat;
+import basePackage.service.OrdersService;
+import basePackage.service.impl.LongTimeAsyncCallService;
 import basePackage.utils.HttpUtil;
 import basePackage.utils.IpUtils;
 import basePackage.utils.MessageBox;
-import cn.javaer.wechat.pay.model.UnifiedOrderRequest;
-import cn.javaer.wechat.pay.model.UnifiedOrderResponse;
-import cn.javaer.wechat.pay.model.base.TradeType;
-import cn.javaer.wechat.pay.util.CodecUtils;
+import basePackage.wxUtils.WXPayUtil;
 import cn.javaer.wechat.pay.util.ObjectUtils;
-import cn.javaer.wechat.pay.util.SignUtils;
 
 /**
  * 微信controller
@@ -41,18 +43,15 @@ import cn.javaer.wechat.pay.util.SignUtils;
 @RequestMapping("/weachat")
 @ConfigurationProperties(prefix="wx")
 public class WeachatController {
+	@Autowired
+	private OrdersService os;
 	private String appId;
 	private String appSecret;
 	private String grantType;
 	private String MCH_ID ; //商户号
-//	private String requestUrl;
-	
-	 public String getMCH_ID() {
-		return MCH_ID;
-	}
-	public void setMCH_ID(String mCH_ID) {
-		MCH_ID = mCH_ID;
-	}
+	private String appkey;
+	@Autowired
+	private LongTimeAsyncCallService longTimeAsyncCallService;
 	@Autowired
 	   private RedisTemplate<String, String> redisTemplate;
 	@RequestMapping("/login/{code}")
@@ -73,7 +72,8 @@ public class WeachatController {
 			return MessageBox.fail(msg);
 		}
 		String  key = UUID.randomUUID().toString();
-		redisTemplate.opsForValue().set(key, weachat.getSession_key());
+		//存储key，15天过期
+		redisTemplate.opsForValue().set(key, weachat.getOpenid(), 60*60*60*24*15, TimeUnit.SECONDS);
 		return MessageBox.success(key);
 	}
 	/**
@@ -83,48 +83,102 @@ public class WeachatController {
 	 */
 	@RequestMapping("prePayment")
 	private MessageBox payment(String str,HttpServletRequest request) {
-			JSONObject obj = JSON.parseObject(str);
+		JSONObject obj = JSON.parseObject(str);
+		boolean flag = true;
+		Map<String,String>params = new HashMap<>();
 		String openid=	redisTemplate.opsForValue().get(obj.get("token"));
-		Goods goods=JSON.parseObject(str, Goods.class);
+		Orders order=JSON.parseObject(obj.getString("orders"), Orders.class);
 		if(openid == null) { //登录失效
 			return MessageBox.fail("登录失效请重新登录");
 		}
-		UnifiedOrderRequest params =new UnifiedOrderRequest();
-		params.setMchId(MCH_ID);
-		params.setAppId(appId);
-		params.setNonceStr(ObjectUtils.uuid32());
-		params.setBody("腾讯充值中心-QQ会员充值");
-		params.setDetail("充值详情");
-		params.setOutTradeNo(ObjectUtils.uuid32()); //商户订单号
-		Double price = goods.getPrice()*100;
+		params.put("appid",appId);
+		params.put("mch_id",MCH_ID);
+		params.put("nonce_str",ObjectUtils.uuid32());
+		params.put("body","腾讯充值");
+		params.put("detail","会员充值中心");
+		String tradeNo = ObjectUtils.uuid32();
+		params.put("out_trade_no",tradeNo); //商户订单号
+		order.setId(tradeNo);
+		Double price = order.getTotalMoney()*100;
 		if(price.toString().indexOf(".")!=-1) {
 			String totalPrice = price.toString().split("\\.")[0];
-			params.setTotalFee(Integer.parseInt(totalPrice));  //总价格
+			params.put("total_fee",Integer.parseInt(totalPrice)+"");  //总价格
 		}else {
-			params.setTotalFee(Integer.parseInt(price.toString()));  //总价格
+			params.put("total_fee",Integer.parseInt(price.toString())+"");  //总价格
 		}
 		try {
-			params.setSpbillCreateIp(IpUtils.getIpAddress(request));//终端ip
+			params.put("spbill_create_ip",IpUtils.getIpAddress(request));//终端ip
 		} catch (IOException e) {
 			e.printStackTrace();
 		}  
-		params.setProductId(goods.getId());
-		params.setOpenId(openid);
-		params.setTradeType(TradeType.JSAPI); //交易类型
-		//签名，最后一位是32为商户密钥
-		String sign = SignUtils.generateSign(params, ObjectUtils.uuid32());
-		params.setSign(sign);  //签名
-	/**
-	 * 异步接收微信支付结果通知的回调地址，通知url必须为外网可访问的url，不能携带参数。 // TODO 
-	 */
-		params.setNotifyUrl("http://localhost:8080/buy");
-		String reqXml = CodecUtils.marshal(params);
+		params.put("openid",openid);
+		params.put("trade_type","JSAPI"); //交易类型
+//	 异步接收微信支付结果通知的回调地址，通知url必须为外网可访问的url，不能携带参数。 // TODO 
+		params.put("notify_url","http://localhost:8080/buy");
+		String sign = null;
+		try {
+			sign = WXPayUtil.generateSignature(params,"WKD3910pklz93ms8NXU0Mmlaeowv95B2");
+		} catch (Exception e) {
+			flag =false;
+			e.printStackTrace();
+		}
+		params.put("sign",sign);  //签名
+		String reqXml = null;
+		try {
+			reqXml = WXPayUtil.mapToXml(params);
+		} catch (Exception e) {
+			flag =false;
+			e.printStackTrace();
+		}
 		String result = HttpUtil.postData("https://api.mch.weixin.qq.com/pay/unifiedorder", reqXml);
-		System.out.println(result);
-		UnifiedOrderResponse unifiedOrderResponse = CodecUtils.unmarshal(reqXml, UnifiedOrderResponse.class);
-		System.out.println(unifiedOrderResponse);
-//		XMLUtils.getAttributeValue(, name);
-		return MessageBox.success(null);
+		Map resultMap = null;
+		try {
+			 resultMap = WXPayUtil.xmlToMap(result);
+		} catch (Exception e) {
+			flag = false;
+			e.printStackTrace();
+		}
+		if(flag) {
+			order.setOpenid(openid);
+			//异步插入订单数据
+			Callable callable = new Callable() {
+				@Override
+				public Object call() throws Exception {
+					return os.createOrder(order);
+				}
+			};
+			longTimeAsyncCallService.handle(callable);
+			return MessageBox.success(null,resultMap);
+		}else {
+			return MessageBox.fail("支付失败，请稍后再试");
+		}
+	
+	}
+	//再次签名
+	@SuppressWarnings("unchecked")
+	@RequestMapping("signAgin")
+	public MessageBox signAgin(HttpServletRequest request) {
+		String str =request.getParameter("str");
+		JSONObject obj = JSON.parseObject(str);
+		Map map =new HashMap();
+		map.put("appId", obj.get("appid").toString());
+		map.put("nonceStr", obj.get("nonce_str").toString());
+		map.put("package","prepay_id="+obj.getString("prepay_id"));
+		map.put("signType", "MD5");
+		String timeStamp = System.currentTimeMillis()+"";
+		map.put("timeStamp", timeStamp);
+		String sign = null;
+		try {
+			 sign = WXPayUtil.generateSignature(map, appkey);
+		} catch (Exception e) {
+			e.printStackTrace();
+			return	MessageBox.fail("支付失败，请稍后再试");
+			 
+		}
+		Map result = new HashMap();
+		result.put("sign", sign);
+		result.put("time", timeStamp);
+		return MessageBox.success(result);
 	}
 	
 	@RequestMapping(value="buy")
@@ -138,46 +192,12 @@ public class WeachatController {
 			sb.append(line);  
 		}  
 		br.close();  
-//		//sb为微信返回的xml  
 		String notityXml = sb.toString();  
 		String resXml = "";  
-//		Map map = XMLUtil.doXMLParse(notityXml);
-//		String returnCode = (String) map.get("return_code");  
-// 
-//		if("SUCCESS".equals(returnCode)){  
-//			String out_trade_no=(String) map.get("out_trade_no");
-//			String timestamp=(String) map.get("nonce_str");
-//			String goodsid=out_trade_no.substring(out_trade_no.length()-3, out_trade_no.length());
-//			String openid=(String) map.get("openid");
-//			/*
-//			 * 
-//			 * 
-//			 * 
-//			 * 
-//			 * 
-//			 * TODO 存入数据库的逻辑
-//			 * 
-//			 * 
-//			 * 
-//			 * 
-//			 * 
-//			 * 
-//			 * 
-//			 * */
-//			resXml = "<xml>" + "<return_code><![CDATA[SUCCESS]]></return_code>"  
-//					+ "<return_msg><![CDATA[OK]]></return_msg>" + "</xml> ";  
-//		}else {
-//			resXml = "<xml>" + "<return_code><![CDATA[FAIL]]></return_code>"  
-//					+ "<return_msg><![CDATA[报文为空]]></return_msg>" + "</xml> ";  
-//		}
-//		BufferedOutputStream out = new BufferedOutputStream(  
-//				response.getOutputStream());  
-//		out.write(resXml.getBytes());  
-//		out.flush();  
-//		out.close();  
-// 
+		// TODO 修改订单状态
 	}
-
+	
+	
 	public String getAppId() {
 		return appId;
 	}
@@ -195,5 +215,17 @@ public class WeachatController {
 	}
 	public void setGrantType(String grantType) {
 		this.grantType = grantType;
+	}
+	public String getAppkey() {
+		return appkey;
+	}
+	public void setAppkey(String appkey) {
+		this.appkey = appkey;
+	}
+	 public String getMCH_ID() {
+		return MCH_ID;
+	}
+	public void setMCH_ID(String mCH_ID) {
+		MCH_ID = mCH_ID;
 	}
 }

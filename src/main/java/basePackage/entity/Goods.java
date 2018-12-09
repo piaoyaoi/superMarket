@@ -65,7 +65,33 @@ public class Goods extends BaseEntity{
 	
 	private List<GoodsImg> goodImg;
 	
+	/**
+	 * 所属型号id
+	 */
+	private String sizeId;
 	
+	/**
+	 * 该商品包邮界限 为null表示不包邮，订单多个商品则取平均值
+	 */
+	private double postLimit; 
+	
+	
+	public double getPostLimit() {
+		return postLimit;
+	}
+
+	public void setPostLimit(double postLimit) {
+		this.postLimit = postLimit;
+	}
+
+	public String getSizeId() {
+		return sizeId;
+	}
+
+	public void setSizeId(String sizeId) {
+		this.sizeId = sizeId;
+	}
+
 	public List<GoodsImg> getGoodImg() {
 		return goodImg;
 	}

@@ -1,13 +1,19 @@
 package basePackage.entity;
 
-import java.util.Date;
+import basePackage.BaseEntity;
 
 /**
  * 订单详情类
  * @author Administrator
  *
  */
-public class OrdersDetail {
+public class OrdersDetail extends BaseEntity{
+	
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = -171509562502519081L;
+
 	/**
 	 * 订单唯一标识
 	 */
@@ -23,39 +29,16 @@ public class OrdersDetail {
 	 */
 	private Goods goods;
 	
-	/**
-	 * 发货方式
-	 */
-	private String deliveWay;
+	private Integer count;
 	
-	/**
-	 * 发货日期
-	 */
-	private Date deliverDate;
-	
-	/**
-	 * 预计到达日期
-	 */
-	private Date mayArriveDate;
-	
-	/**
-	 * 实际到达日期
-	 */
-	private Date realyArriveDate;
-	
-	/**
-	 * 备注
-	 * @return
-	 */
-	private String remark;
-	
-	public String getRemark() {
-		return remark;
+	public Integer getCount() {
+		return count;
 	}
 
-	public void setRemark(String remark) {
-		this.remark = remark;
+	public void setCount(Integer count) {
+		this.count = count;
 	}
+
 
 	public String getOrderId() {
 		return orderId;
@@ -80,38 +63,4 @@ public class OrdersDetail {
 	public void setGoods(Goods goods) {
 		this.goods = goods;
 	}
-
-	public String getDeliveWay() {
-		return deliveWay;
-	}
-
-	public void setDeliveWay(String deliveWay) {
-		this.deliveWay = deliveWay;
-	}
-
-	public Date getDeliverDate() {
-		return deliverDate;
-	}
-
-	public void setDeliverDate(Date deliverDate) {
-		this.deliverDate = deliverDate;
-	}
-
-	public Date getMayArriveDate() {
-		return mayArriveDate;
-	}
-
-	public void setMayArriveDate(Date mayArriveDate) {
-		this.mayArriveDate = mayArriveDate;
-	}
-
-	public Date getRealyArriveDate() {
-		return realyArriveDate;
-	}
-
-	public void setRealyArriveDate(Date realyArriveDate) {
-		this.realyArriveDate = realyArriveDate;
-	}
-	
-	
 }
