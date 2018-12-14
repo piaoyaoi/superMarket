@@ -25,7 +25,11 @@ public class MessageBox {
 		msBox.setMs(ms);
 		return msBox;
 	}
-	
+	public static MessageBox success(String ms) {
+		MessageBox msBox=new MessageBox();
+		msBox.setMs(ms);
+		return msBox;
+	}
 
 
 	public static MessageBox fail(Object data) {

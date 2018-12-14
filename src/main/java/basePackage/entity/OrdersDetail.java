@@ -29,8 +29,22 @@ public class OrdersDetail extends BaseEntity{
 	 */
 	private Goods goods;
 	
+	/**
+	 * 商品主图
+	 */
+	private String pic;
+	
 	private Integer count;
 	
+	
+	public String getPic() {
+		return pic;
+	}
+
+	public void setPic(String pic) {
+		this.pic = pic;
+	}
+
 	public Integer getCount() {
 		return count;
 	}

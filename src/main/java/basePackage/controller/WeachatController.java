@@ -88,6 +88,10 @@ public class WeachatController {
 		Map<String,String>params = new HashMap<>();
 		String openid=	redisTemplate.opsForValue().get(obj.get("token"));
 		Orders order=JSON.parseObject(obj.getString("orders"), Orders.class);
+		boolean repeatOrder = false;
+		if(order.getId() != null) {
+			repeatOrder =true;
+		}
 		if(openid == null) { //登录失效
 			return MessageBox.fail("登录失效请重新登录");
 		}
@@ -139,15 +143,18 @@ public class WeachatController {
 			e.printStackTrace();
 		}
 		if(flag) {
-			order.setOpenid(openid);
-			//异步插入订单数据
-			Callable callable = new Callable() {
-				@Override
-				public Object call() throws Exception {
-					return os.createOrder(order);
-				}
-			};
-			longTimeAsyncCallService.handle(callable);
+			if(!repeatOrder) {
+				order.setOpenid(openid);
+				//异步插入订单数据
+				Callable callable = new Callable() {
+					@Override
+					public Object call() throws Exception {
+						return os.createOrder(order);
+					}
+				};
+				longTimeAsyncCallService.handle(callable);
+			}
+	
 			return MessageBox.success(null,resultMap);
 		}else {
 			return MessageBox.fail("支付失败，请稍后再试");
